@@ -1,0 +1,1 @@
+docker run --rm -it -v .:/pydegensac f8781c223615 bash

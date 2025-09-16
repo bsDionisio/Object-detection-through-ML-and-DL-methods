@@ -2,6 +2,7 @@ import torch, os, argparse, h5py, warnings, imageio
 from torchtyping import TensorType
 import numpy as np
 from tqdm import tqdm
+from disk.model import CycleMatcher, CycleRatioMatcher
 
 from torch_dimcheck import dimchecked
 
