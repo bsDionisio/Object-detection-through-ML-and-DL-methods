@@ -1,0 +1,1 @@
+python view_h5.py --image-extension PNG --save /home/buybluepants/Documents/Object-detection-through-ML-and-DL-methods/results /home/buybluepants/Documents/Object-detection-through-ML-and-DL-methods/DL_algorithms/DISK/h5_artifacts_destination /home/buybluepants/Documents/Object-detection-through-ML-and-DL-methods/data keypoints

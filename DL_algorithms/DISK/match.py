@@ -2,7 +2,7 @@ import torch, os, argparse, h5py, warnings, imageio
 from torchtyping import TensorType
 import numpy as np
 from tqdm import tqdm
-from disk.model import CycleMatcher, CycleRatioMatcher
+from disk.model import CycleMatcher
 
 from torch_dimcheck import dimchecked
 
@@ -248,7 +248,8 @@ class MatcherWrapper:
                 self._cycle_matcher = CycleMatcher()
             #If a threshold exists, it uses CycleRatioMatcher with that ratio
             else:
-                self._cycle_matcher = CycleRatioMatcher(args.rt)
+                #self._cycle_matcher = CycleRatioMatcher(args.rt)
+                return
 
         #Ensures shapes are correct
         @dimchecked
