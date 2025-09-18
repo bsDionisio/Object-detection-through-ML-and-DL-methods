@@ -15,9 +15,9 @@ import torch
 import numpy as np
 import matplotlib.cm as cm
 
-os.sys.path.append("../")  # Add the project directory
+os.sys.path.append("../")  # Add the project directory to python's module path
 from src.loftr import LoFTR, default_cfg
-from src.config.default import get_cfg_defaults
+from src.config.default import get_cfg_defaults #Function that returns a default configuration object
 try:
     from demo.utils import (AverageTimer, VideoStreamer,
                             make_matching_plot_fast, make_matching_plot, frame2tensor)
@@ -92,31 +92,44 @@ if __name__ == '__main__':
         raise RuntimeError("GPU is required to run this demo.")
 
     # Initialize LoFTR
-    matcher = LoFTR(config=default_cfg)
+    matcher = LoFTR(config=default_cfg) #Creates a LoFTR model instance with the default configuration
+    #Loads the pretrained model weights from a checkpoint file given in opt.weight
     matcher.load_state_dict(torch.load(opt.weight)['state_dict'])
+    #Puts the model in evaluation mode and moves the model to the specified device
     matcher = matcher.eval().to(device=device)
 
     # Configure I/O
     if opt.save_video:
+        #Uses OpenCV's VideoWriter to optionally save videos; loftr-matches.mp4 will contain side-by-side matching visualizations;
         print('Writing video to loftr-matches.mp4...')
         writer = cv2.VideoWriter('loftr-matches.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 15, (640*2 + 10, 480))
     if opt.save_input:
+        #demo-input.mp4 will contain the raw input video frames
         print('Writing video to demo-input.mp4...')
         input_writer = cv2.VideoWriter('demo-input.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 15, (640, 480))
 
+    #Utility for grabbing frames from a webcam, video file, or image sequence
     vs = VideoStreamer(opt.input, opt.resize, opt.skip,
                        opt.image_glob, opt.max_length)
+    #Returns a tuple (frame, ret); frame=the actual image (numpy array); ret=boolean -> True if reading succeeded
     frame, ret = vs.next_frame()
+    #Makes sure the first frame was read correctly; If not, stops with an error
     assert ret, 'Error when reading the first frame (try different --input?)'
 
+    #Counters for tracking frames
     frame_id = 0  
     last_image_id = 0
+    #Converts the OpenCV frame (BGR numpy array) into a PyTorch tensor suitable for the model; Moves to correct device
     frame_tensor = frame2tensor(frame, device)
+    #Prepares the first frame in the format expected
     last_data = {'image0': frame_tensor}
+    #Keeps a copy of the raw image
     last_frame = frame
 
+    #If the user provided --output_dir, then it prints the chosen directory and creates the dictionary using Path.mkdir
     if opt.output_dir is not None:
         print('==> Will write outputs to {}'.format(opt.output_dir))
+        #exist_ok=True voids errors if the folder already exists
         Path(opt.output_dir).mkdir(exist_ok=True)
 
     # Create a window to display the demo.
@@ -124,6 +137,7 @@ if __name__ == '__main__':
         window_name = 'LoFTR Matches'
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(window_name, (640*2, 480))
+    #If visualization is disabled, it prints a message that no GUI will be shown
     else:
         print('Skipping visualization, will not show a GUI.')
 
@@ -134,26 +148,41 @@ if __name__ == '__main__':
           '\tc/v: increase/decrease the length of the visualization range (i.e., total number of matches) to show\n'
           '\tq: quit')
 
+    #starts a utility that tracks average runtime
     timer = AverageTimer()
+    #Defines which subset of matches will be shown
     vis_range = [opt.bottom_k, opt.top_k]
 
+    #Loop forever until frames run out
     while True:
+        #Counts processed frames
         frame_id += 1
-        frame, ret = vs.next_frame()
+        #Grabs the next frame from input
+        frame, ret = vs.next_frame()    #ret= True if read worked, False if no more frames
+        #If --skip_frames >1, only processes every Nth frames (saves compute)
         if frame_id % opt.skip_frames != 0:
             # print("Skipping frame.")
+            #Skipped frames are ignored
             continue
+        #if --save_input was set
         if opt.save_input:
             inp = np.stack([frame]*3, -1)
+            #Converts grayscale frames into RGB (needed because video writers expect 3 channels)
             inp_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+            #Writes the frame into demo-input.mp4
             input_writer.write(inp_rgb)
+        #If no frame ws read (ret==False), the loop ends and the demo stops
         if not ret:
             print('Finished demo_loftr.py')
             break
+        #Records the time spent on data loading
         timer.update('data')
+        #Identifiers for the reference frame (last_image_id) and current frame (vs.i-1)
         stem0, stem1 = last_image_id, vs.i - 1
 
+    #Converts current frame -> PyTorch tensor
         frame_tensor = frame2tensor(frame, device)
+        #Updates last_data: image0-reference frame (from before); image1: current frame (new)
         last_data = {**last_data, 'image1': frame_tensor}
         matcher(last_data)
 
