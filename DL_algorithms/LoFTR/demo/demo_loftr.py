@@ -15,6 +15,8 @@ import torch
 import numpy as np
 import matplotlib.cm as cm
 
+from types import SimpleNamespace
+
 os.sys.path.append("../")  # Add the project directory to python's module path
 from src.loftr import LoFTR, default_cfg
 from src.config.default import get_cfg_defaults #Function that returns a default configuration object
@@ -28,51 +30,21 @@ except:
 torch.set_grad_enabled(False)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='LoFTR online demo',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--weight', type=str, help="Path to the checkpoint.")
-    parser.add_argument(
-        '--input', type=str, default='0',
-        help='ID of a USB webcam, URL of an IP camera, '
-             'or path to an image directory or movie file')
-    parser.add_argument(
-        '--output_dir', type=str, default=None,
-        help='Directory where to write output frames (If None, no output)')
-    parser.add_argument(
-        '--image_glob', type=str, nargs='+', default=['*.png', '*.jpg', '*.jpeg'],
-        help='Glob if a directory of images is specified')
-    parser.add_argument(
-        '--skip', type=int, default=1,
-        help='Images to skip if input is a movie or directory')
-    parser.add_argument(
-        '--max_length', type=int, default=1000000,
-        help='Maximum length if input is a movie or directory')
-    parser.add_argument(
-        '--resize', type=int, nargs='+', default=[640, 480],
-        help='Resize the input image before running inference. If two numbers, '
-             'resize to the exact dimensions, if one number, resize the max '
-             'dimension, if -1, do not resize')
-    parser.add_argument(
-        '--no_display', action='store_true',
-        help='Do not display images to screen. Useful if running remotely')
-    parser.add_argument(
-        '--save_video', action='store_true',
-        help='Save output (with match visualizations) to a video.')
-    parser.add_argument(
-        '--save_input', action='store_true',
-        help='Save the input images to a video (for gathering repeatable input source).')
-    parser.add_argument(
-        '--skip_frames', type=int, default=1, 
-        help="Skip frames from webcam input.")
-    parser.add_argument(
-        '--top_k', type=int, default=2000, help="The max vis_range (please refer to the code).")
-    parser.add_argument(
-        '--bottom_k', type=int, default=0, help="The min vis_range (please refer to the code).")
-
-    opt = parser.parse_args()
-    print(front_matter)
-    parser.print_help()
+    opt = SimpleNamespace(
+        weight='/home/bsdionisio/Documents/Object-detection-through-ML-and-DL-methods/DL_algorithms/LoFTR/weights/outdoor_ds.ckpt',
+        input='/home/bsdionisio/Documents/Object-detection-through-ML-and-DL-methods/data',  # webcam ID, or path to video/images
+        output_dir='/home/bsdionisio/Documents/Object-detection-through-ML-and-DL-methods/results',  # where to save frames
+        image_glob=['frame.png', 'logo.png'],
+        skip=1,
+        max_length=1000000,
+        resize=[640, 480],
+        no_display=False,   #If True, will skip cv2.imshow(), only save images/video if configured
+        save_video=True,    #outputs a video showing the matches
+        save_input=False,   #writes a video of the original frames
+        skip_frames=1,
+        top_k=500,
+        bottom_k=0
+    )
 
     if len(opt.resize) == 2 and opt.resize[1] == -1:
         opt.resize = opt.resize[0:1]
@@ -86,10 +58,13 @@ if __name__ == '__main__':
     else:
         raise ValueError('Cannot specify more than two integers for --resize')
 
-    if torch.cuda.is_available():
-        device = 'cuda' 
-    else:
-        raise RuntimeError("GPU is required to run this demo.")
+    #if torch.cuda.is_available():
+    #    device = 'cuda' 
+     #   print(device)
+   # else:
+    device = 'cpu'
+
+    print(device)
 
     # Initialize LoFTR
     matcher = LoFTR(config=default_cfg) #Creates a LoFTR model instance with the default configuration
@@ -184,33 +159,53 @@ if __name__ == '__main__':
         frame_tensor = frame2tensor(frame, device)
         #Updates last_data: image0-reference frame (from before); image1: current frame (new)
         last_data = {**last_data, 'image1': frame_tensor}
+        #This fills last_data with: mkpts0_f: matched keypoints in reference frame; mkpts1_f=matched keypoints in current frame;
+        # mconf=confidence scores or each match
         matcher(last_data)
 
+        #total number of matches LoFTR found
         total_n_matches = len(last_data['mkpts0_f'])
+        #reference frame keypoints (subset defined by vis_range)
         mkpts0 = last_data['mkpts0_f'].cpu().numpy()[vis_range[0]:vis_range[1]]
+        #current frame keypoints (same indices)
         mkpts1 = last_data['mkpts1_f'].cpu().numpy()[vis_range[0]:vis_range[1]]
+        #Confidence score for those matches
         mconf = last_data['mconf'].cpu().numpy()[vis_range[0]:vis_range[1]]
 
-        # Normalize confidence.
+        # Normalize confidence. Scales confidence scores into [0,1] for consistent coloring. Prevents division by zero with + 1e-5
         if len(mconf) > 0:
             conf_vis_min = 0.
             conf_min = mconf.min()
             conf_max = mconf.max()
             mconf = (mconf - conf_vis_min) / (conf_max - conf_vis_min + 1e-5)
 
+        # 🔥 Filter low-confidence matches
+        conf_threshold = 0.7  # try 0.3, 0.5, 0.7
+        keep = mconf > conf_threshold
+        mkpts0 = mkpts0[keep]
+        mkpts1 = mkpts1[keep]
+        mconf  = mconf[keep]
+
+        #Records model inference time
         timer.update('forward')
+        #sets transparency level (no transparency here)
         alpha = 0
+        #cm.jet(): maps normalized confidence scores into jet colormap (blue→green→yellow→red)
         color = cm.jet(mconf, alpha=alpha)
 
+        #Large caption that appears at the top of the visualization
         text = [
             f'LoFTR',
             '# Matches (showing/total): {}/{}'.format(len(mkpts0), total_n_matches),
         ]
+        #Smaller annotation, sually shown at the bottom or corner of the plot
         small_text = [
             f'Showing matches from {vis_range[0]}:{vis_range[1]}',
             f'Confidence Range: {conf_min:.2f}:{conf_max:.2f}',
             'Image Pair: {:06}:{:06}'.format(stem0, stem1),
         ]
+        #Calls make_matching_plot_fast (a helper function from demo/utils.py); 
+        # Output: out=a single OpenCV image showing both frames side by side with lines connecting matched points.
         out = make_matching_plot_fast(
             last_frame, frame, mkpts0, mkpts1, mkpts0, mkpts1, color, text,
             path=None, show_keypoints=False, small_text=small_text)
@@ -223,23 +218,31 @@ if __name__ == '__main__':
 
         if not opt.no_display:
             if opt.save_video:
-                writer.write(out)
-            cv2.imshow('LoFTR Matches', out)
-            key = chr(cv2.waitKey(1) & 0xFF)
+                writer.write(out)   #appends the visualization to the output video if --save_video
+            cv2.imshow('LoFTR Matches', out)    #displays the match visualization window
+            key = chr(cv2.waitKey(1) & 0xFF)    #cv2.waitKey(1) → waits for a keypress (1 ms); Converts to character
+            #Quit (q)
             if key == 'q':
+                #Releases video writers
                 if opt.save_video:
                     writer.release()
                 if opt.save_input:
                     input_writer.release()
+                #Cleans up input stream
                 vs.cleanup()
                 print('Exiting...')
+                #Exists the loop
                 break
+            #New reference image
             elif key == 'n':  
+                #Sets the current frame as the new reference (image0); Future matches will be compared against this frame
                 last_data['image0'] = frame_tensor
                 last_frame = frame
                 last_image_id = (vs.i - 1)
                 frame_id_left = frame_id
+            #Scroll Through Match Range (d/f)
             elif key in ['d', 'f']:
+                #Moves the window of matches shown (by +/- 200)
                 if key == 'd':
                     if vis_range[0] >= 0:
                        vis_range[0] -= 200
@@ -248,22 +251,28 @@ if __name__ == '__main__':
                     vis_range[0] += 200
                     vis_range[1] += 200
                 print(f'\nChanged the vis_range to {vis_range[0]}:{vis_range[1]}')
+            #Shrinks or expands how many matches are shown un the visualization by +/- 50
             elif key in ['c', 'v']:
                 if key == 'c':
                     vis_range[1] -= 50
                 if key =='v':
                     vis_range[1] += 50
                 print(f'\nChanged the vis_range[1] to {vis_range[1]}')
+        #If no GUI dislay (--no_display) -> Saves each frame's visualization as a .png in the output directory
         elif opt.output_dir is not None:
             stem = 'matches_{:06}_{:06}'.format(stem0, stem1)
             out_file = str(Path(opt.output_dir, stem + '.png'))
             print('\nWriting image to {}'.format(out_file))
             cv2.imwrite(out_file, out)
+        #If neither display nor output directory is given -> error, since results would be lost
         else:
             raise ValueError("output_dir is required when no display is given.")
+        #Updates the visualization time statistics; prints FPS/per-stage timing (dara, forward, viz)
         timer.update('viz')
         timer.print()
 
 
+    #Closes all OpenCV windows
     cv2.destroyAllWindows()
+    #Cleans up the VideoStreamer (releases video file or camera)
     vs.cleanup()
