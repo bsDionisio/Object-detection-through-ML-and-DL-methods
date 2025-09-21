@@ -205,7 +205,7 @@ def extract(dataset, save_path):
     pbar = tqdm(dataloader)
     for bitmaps, images in pbar:
         #Moves image tensors to GPU (DEV)
-        bitmaps = bitmaps.to(DEV, non_blocking=True)
+        bitmaps = bitmaps.to(CPU, non_blocking=True)
 
         #Calls the model in inference mode
         with torch.no_grad():
@@ -322,7 +322,7 @@ if __name__ == '__main__':
         help="Directory with images to be processed."
     )
     args = parser.parse_args()
-    DEV   = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    #DEV   = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     CPU   = torch.device('cpu')
     dataset = SceneDataset(args.image_path, crop_size=(args.height, args.width))
     
@@ -337,6 +337,6 @@ if __name__ == '__main__':
         raise KeyError('Incompatible weight file!')
     model = DISK(window=8, desc_dim=args.desc_dim)
     model.load_state_dict(weights)
-    model = model.to(DEV)
+    model = model.to(CPU)
     
     described_samples = extract(dataset, args.h5_path)

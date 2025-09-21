@@ -53,7 +53,8 @@ if __name__ == '__main__':
     MAX_FULL_MATRIX = args.max_full_matrix
 
     #Checks if a GPU with CUDA is available; if not, uses CPU (torch.device("cpu"))
-    DEV   = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    #DEV   = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    DEV   = torch.device('cpu')
     #Prints a message showing the input file path and the device chosen (cuda or cpu)
     print(f'Processing {args.h5_path} with DEV={DEV}')
 
