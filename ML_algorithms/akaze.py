@@ -23,8 +23,8 @@ class Akaze:
         parser.add_argument('--homography', help='Path to the homography matrix.', default='data/H1to3p.xml')
         args = parser.parse_args()
 
-        fs = cv2.FileStorage(cv2.samples.findFile('/home/bsdionisio/Desktop/teseBea/data/H1to3p.xml'), cv2.FILE_STORAGE_READ)
-        homography = fs.getFirstTopLevelNode().mat()
+        #fs = cv2.FileStorage(cv2.samples.findFile('/home/bsdionisio/Documents/Object-detection-through-ML-and-DL-methods/data/H1to3p.xml'), cv2.FILE_STORAGE_READ)
+        #homography = fs.getFirstTopLevelNode().mat()
 
         self.keypoints_left, self.descriptors_left = self.akaze.detectAndCompute(self.img1, None)
         self.keypoints_right, self.descriptors_right = self.akaze.detectAndCompute(self.img2, None)
@@ -52,6 +52,12 @@ class Akaze:
         print("Number of Keypoints Detected In The Overall Image: ", len(self.keypoints_right))
         # Print total number of matching points between the training and query images
         print("\nNumber of Matching Keypoints Between The Sample and Overall Images: ", len(good))
+        # Number of descriptors
+        print("Number of descriptors (logo):", self.descriptors_left.shape[0])
+        print("Number of descriptors (frame):", self.descriptors_right.shape[0])
+        # Memory usage
+        print("Memory (logo descriptors):", self.descriptors_left.nbytes, "bytes")
+        print("Memory (frame descriptors):", self.descriptors_right.nbytes, "bytes")
 
         cv2.imshow('Akaze', result)
         cv2.waitKey()
