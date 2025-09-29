@@ -62,6 +62,13 @@ class Brief:
         # Print total number of matching points between the sample and overall images
         print("\nNumber of Matching Keypoints Between The Sample and Overall Images: ", len(matches))
 
+        # Number of descriptors
+        print("Number of descriptors (logo):", self.descriptors_left.shape[0])
+        print("Number of descriptors (frame):", self.descriptors_right.shape[0])
+        # Memory usage
+        print("Memory (logo descriptors):", self.descriptors_left.nbytes, "bytes")
+        print("Memory (frame descriptors):", self.descriptors_right.nbytes, "bytes")
+
         cv2.imwrite("brief_result.png", result)
         cv2.imshow('result', result)
         cv2.waitKey()

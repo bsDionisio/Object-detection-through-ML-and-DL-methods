@@ -37,7 +37,7 @@ if __name__ == '__main__':
         image_glob=['frame.png', 'logo.png'],
         skip=1,
         max_length=1000000,
-        resize=[640, 480],
+        resize=[1920, 1200],
         no_display=False,   #If True, will skip cv2.imshow(), only save images/video if configured
         save_video=True,    #outputs a video showing the matches
         save_input=False,   #writes a video of the original frames
