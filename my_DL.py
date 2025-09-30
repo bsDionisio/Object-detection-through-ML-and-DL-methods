@@ -86,7 +86,7 @@ class DL:
 
         good_matches = []
         for i, (distance, index) in enumerate(zip(distances, indices)):
-            if distance[0] < 0.75 * distance[1]:  # Usando o teste de razão de Lowe
+            if distance[0] < 0.85 * distance[1]:  # Usando o teste de razão de Lowe
                 good_matches.append(cv2.DMatch(_distance=distance[0], _imgIdx=0, _queryIdx=i, _trainIdx=index[0]))
 
         # -- Draw matches

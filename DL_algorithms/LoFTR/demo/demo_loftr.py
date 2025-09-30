@@ -8,15 +8,12 @@ We thank the authors for their execellent work.
 """
 
 import os
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 import argparse
 from pathlib import Path
 import cv2
 import torch
-torch.cuda.empty_cache()
 import numpy as np
 import matplotlib.cm as cm
-import time
 
 from types import SimpleNamespace
 
@@ -40,7 +37,7 @@ if __name__ == '__main__':
         image_glob=['frame.png', 'logo.png'],
         skip=1,
         max_length=1000000,
-        resize=[1280, 800],
+        resize=[640, 480],
         no_display=False,   #If True, will skip cv2.imshow(), only save images/video if configured
         save_video=True,    #outputs a video showing the matches
         save_input=False,   #writes a video of the original frames
@@ -61,10 +58,10 @@ if __name__ == '__main__':
     else:
         raise ValueError('Cannot specify more than two integers for --resize')
 
-    #if torch.cuda.is_available():
-    #    device = 'cuda' 
-    #else:
-    device = 'cpu'
+    if torch.cuda.is_available():
+        device = 'cuda' 
+    else:
+        device = 'cpu'
 
     # Initialize LoFTR
     matcher = LoFTR(config=default_cfg) #Creates a LoFTR model instance with the default configuration
@@ -127,10 +124,9 @@ if __name__ == '__main__':
     timer = AverageTimer()
     #Defines which subset of matches will be shown
     vis_range = [opt.bottom_k, opt.top_k]
-    writer = None
+
     #Loop forever until frames run out
     while True:
-        torch.cuda.empty_cache()
         #Counts processed frames
         frame_id += 1
         #Grabs the next frame from input
@@ -156,55 +152,13 @@ if __name__ == '__main__':
         #Identifiers for the reference frame (last_image_id) and current frame (vs.i-1)
         stem0, stem1 = last_image_id, vs.i - 1
 
-        #Converts current frame -> PyTorch tensor
+    #Converts current frame -> PyTorch tensor
         frame_tensor = frame2tensor(frame, device)
         #Updates last_data: image0-reference frame (from before); image1: current frame (new)
         last_data = {**last_data, 'image1': frame_tensor}
         #This fills last_data with: mkpts0_f: matched keypoints in reference frame; mkpts1_f=matched keypoints in current frame;
         # mconf=confidence scores or each match
-        start_time = time.time()
-
         matcher(last_data)
-        #with torch.no_grad():
-            #matcher(last_data)
-
-        # ---------------------- METRICS CALCULATION ----------------------
-        # Number of detected keypoints
-        num_kpts_ref = last_data['mkpts0_f'].shape[0]  # in reference (logo or first image)
-        num_kpts_cur = last_data['mkpts1_f'].shape[0]  # in current frame
-        
-        # Number of matches before filtering
-        total_n_matches = num_kpts_ref  # This is usually same as number of matches
-        
-        # Number of descriptors (assume each descriptor is 256 float32)
-        descriptor_size = 256  # LoFTR default
-        dtype_size = 4  # float32 = 4 bytes
-        num_descriptors_ref = num_kpts_ref * descriptor_size
-        num_descriptors_cur = num_kpts_cur * descriptor_size
-        memory_ref = num_descriptors_ref * dtype_size
-        memory_cur = num_descriptors_cur * dtype_size
-        
-        # Match Score
-        matching_score = total_n_matches / float(num_kpts_ref + 1e-5)
-        
-        # End timing
-        exec_time = time.time() - start_time
-        
-        # Print metrics
-        print("\n--- METRICS ---")
-        print(f"Number of Keypoints Detected In The Reference Image:  {num_kpts_ref}")
-        print(f"Number of Keypoints Detected In The Current Image:    {num_kpts_cur}")
-        print(f"Number of Matching Keypoints Between The Two Images:  {total_n_matches}")
-        
-        print(f"Number of descriptors (reference): {num_descriptors_ref}")
-        print(f"Number of descriptors (current):   {num_descriptors_cur}")
-        print(f"Memory (reference descriptors):    {memory_ref:,} bytes")
-        print(f"Memory (current descriptors):      {memory_cur:,} bytes")
-        
-        print("--- ROBUSTNESS METRIC ---")
-        print(f"Matching Score: {matching_score:.4f} ({total_n_matches} matches / {num_kpts_ref} keypoints)")
-        print(f"Execution time: {exec_time:.4f} seconds")
-        print("---------------------------------------------------\n")
 
         #total number of matches LoFTR found
         total_n_matches = len(last_data['mkpts0_f'])
@@ -258,11 +212,6 @@ if __name__ == '__main__':
         # make_matching_plot(
         #     last_frame, frame, mkpts0, mkpts1, mkpts0, mkpts1, color, text,
         #     path=save_path, show_keypoints=opt.show_keypoints, small_text=small_text)
-        out_height, out_width = out.shape[:2]
-        # Initialize writer after knowing real frame size
-        if opt.save_video and writer is None:
-            out_height, out_width = out.shape[:2]
-            writer = cv2.VideoWriter('loftr-matches.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 15, (out_width, out_height))
 
         if not opt.no_display:
             if opt.save_video:
@@ -318,10 +267,10 @@ if __name__ == '__main__':
         #Updates the visualization time statistics; prints FPS/per-stage timing (dara, forward, viz)
         timer.update('viz')
         timer.print()
-        torch.cuda.empty_cache()
 
 
     #Closes all OpenCV windows
+    cv2.waitKey(0)
     cv2.destroyAllWindows()
     #Cleans up the VideoStreamer (releases video file or camera)
     vs.cleanup()

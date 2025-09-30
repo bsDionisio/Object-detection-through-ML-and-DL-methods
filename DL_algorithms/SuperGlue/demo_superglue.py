@@ -190,11 +190,11 @@ if __name__ == '__main__':
             path=None, show_keypoints=show_keypoints, small_text=small_text)
         
         # Metric calculations
-        num_kpts_logo = kpts0.shape[0]
-        num_kpts_frame = kpts1.shape[0]
+        num_kpts_logo = kpts1.shape[0]
+        num_kpts_frame = kpts0.shape[0]
         num_matches = np.sum(valid)
-        num_descriptors_logo = last_data['descriptors0'][0].nelement()
-        num_descriptors_frame = pred['descriptors1'][0].nelement()
+        num_descriptors_logo = pred['descriptors1'][0].nelement()
+        num_descriptors_frame = last_data['descriptors0'][0].nelement()
         memory_logo = num_descriptors_logo * 4  # float32 = 4 bytes
         memory_frame = num_descriptors_frame * 4
         
