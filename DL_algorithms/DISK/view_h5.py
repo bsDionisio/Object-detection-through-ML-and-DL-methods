@@ -2,6 +2,7 @@ import argparse, h5py, os, imageio, torch
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import torch.nn.functional as F
+import time
 
 from disk.common.vis import MultiFigure
 
@@ -143,6 +144,33 @@ def view_matches(h5_path, image_path):
 
             #Draws lines connecting corresponding keypoints across the two images
             fig.mark_xy(left, right)
+
+                        # Statistics
+            num_keypoints_1 = len(kp_1)
+            num_keypoints_2 = len(kp_2)
+            num_matches = len(matches[0])  # Number of matched keypoints
+
+            # Compute the number of descriptors (assuming one descriptor per keypoint)
+            num_descriptors_1 = num_keypoints_1 * kp_1.shape[1]  # e.g., 128 descriptors per keypoint if they are SIFT
+            num_descriptors_2 = num_keypoints_2 * kp_2.shape[1]
+
+            # Calculate memory usage (assuming each descriptor is a float32, i.e., 4 bytes)
+            memory_1 = num_descriptors_1 * 4  # in bytes
+            memory_2 = num_descriptors_2 * 4  # in bytes
+
+            # Compute the matching score
+            matching_score = num_matches / min(num_keypoints_1, num_keypoints_2)
+
+            # Print the statistics
+            print(f"Number of Keypoints Detected In The Reference Image: {num_keypoints_1}")
+            print(f"Number of Keypoints Detected In The Current Image:   {num_keypoints_2}")
+            print(f"Number of Matching Keypoints Between The Two Images: {num_matches}")
+            print(f"Number of descriptors (reference): {num_descriptors_1}")
+            print(f"Number of descriptors (current):   {num_descriptors_2}")
+            print(f"Memory (reference descriptors):    {memory_1} bytes")
+            print(f"Memory (current descriptors):      {memory_2} bytes")
+            print("--- ROBUSTNESS METRIC ---")
+            print(f"Matching Score: {matching_score:.4f} ({num_matches} matches / {min(num_keypoints_1, num_keypoints_2)} keypoints)")
 
             show_or_save()
 

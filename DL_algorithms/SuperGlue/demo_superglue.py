@@ -6,6 +6,7 @@ from pathlib import Path
 from models.matching import Matching
 from models.utils import (AverageTimer, VideoStreamer, make_matching_plot_fast, frame2tensor)
 import matplotlib.cm as cm
+import time
 
 torch.set_grad_enabled(False)
 
@@ -65,7 +66,7 @@ if __name__ == '__main__':
     #Prevents GPU display, useful for headless environments
     no_display =  False     #True = do not open GUI windows (useful on servers)
     #Ignores GPU and forces interference on CPU
-    force_cpu = False   #True = ignore GPU and run everything on CPU
+    force_cpu = True   #True = ignore GPU and run everything on CPU
 
 
     #setting up the device (CPU OR GPU) for inference and configuring parameters
@@ -139,6 +140,7 @@ if __name__ == '__main__':
         #stem0 = previous image, stem1 = current image
         stem0, stem1 = last_image_id, vs.i - 1
 
+        start_time = time.time()
         #Converts frame to a tensor that is ready-to-use for a neural network
         frame_tensor = frame2tensor(frame, device)
         #merges last_data with 'image1' to compute matches between the previous image (image0) and the current image (image1)
@@ -187,6 +189,31 @@ if __name__ == '__main__':
             last_frame, frame, kpts0, kpts1, mkpts0, mkpts1, color, text,
             path=None, show_keypoints=show_keypoints, small_text=small_text)
         
+        # Metric calculations
+        num_kpts_logo = kpts0.shape[0]
+        num_kpts_frame = kpts1.shape[0]
+        num_matches = np.sum(valid)
+        num_descriptors_logo = last_data['descriptors0'][0].nelement()
+        num_descriptors_frame = pred['descriptors1'][0].nelement()
+        memory_logo = num_descriptors_logo * 4  # float32 = 4 bytes
+        memory_frame = num_descriptors_frame * 4
+        
+        # Matching score
+        matching_score = num_matches / max(1, num_kpts_logo)  # Avoid division by zero
+        
+        # Print metrics
+        print("\n--- METRICS ---")
+        print("Number of Keypoints Detected In The Sample Image (logo): ", num_kpts_logo)
+        print("Number of Keypoints Detected In The Overall Image (frame): ", num_kpts_frame)
+        print("\nNumber of Matching Keypoints Between The Sample and Overall Images: ", num_matches)
+        print("Overall Images: 1")
+        print("Number of descriptors (logo):", num_descriptors_logo)
+        print("Number of descriptors (frame):", num_descriptors_frame)
+        print("Memory (logo descriptors): {:,} bytes".format(memory_logo))
+        print("Memory (frame descriptors): {:,} bytes".format(memory_frame))
+        print("--- ROBUSTNESS METRIC ---")
+        print("Matching Score: {:.4f} ({} matches / {} keypoints)".format(matching_score, num_matches, num_kpts_logo))
+
         if not no_display:
             cv2.imshow('SuperGlue matches', out)
             #Setting a character string representing the key that was pressed; if no key pressed -> -1
@@ -219,8 +246,11 @@ if __name__ == '__main__':
             elif key == 'k':
                 show_keypoints = not show_keypoints
 
+        execution_time = time.time() - start_time
         timer.update('viz')
         timer.print()
+
+        print("Execution time: {:.4f} seconds".format(execution_time))
 
         #This block of code saves the match visualization image to disk, only if the user has specified an output directory
         if output_dir is not None:

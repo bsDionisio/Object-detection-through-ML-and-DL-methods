@@ -13,14 +13,14 @@ frame = cv2.imread('data/frame.png')
 
 start_time = time.time()
 
-#my_object = DL() 
+my_object = DL() 
 #my_object = Sift()
-my_object = Akaze()
+#my_object = Akaze()
 #my_object = Brief()
 #my_object = Orb()
 
-#my_object.find_key_points_logo(logo)
-#my_object.find_key_points_frame(frame)
+my_object.find_key_points_logo(logo)
+my_object.find_key_points_frame(frame)
 my_object.find_matches(frame)  #only one available for akaze
 
 end_time = time.time()
