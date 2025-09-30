@@ -22,8 +22,13 @@ class DL:
         self.img2 = None  # frame
         detection_thresh = 0.005
         nms_radius = 5
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # <- Set device
         self.model = SuperPoint(detection_threshold=detection_thresh, nms_radius=nms_radius)
-        self.model.load_state_dict(torch.load('DL_algorithms/SuperPoint/weights/superpoint_v6_from_tf.pth'))
+        #self.model.load_state_dict(torch.load('DL_algorithms/SuperPoint/weights/superpoint_v6_from_tf.pth'))
+        self.model.load_state_dict(
+            torch.load('DL_algorithms/SuperPoint/weights/superpoint_v6_from_tf.pth', map_location=self.device)
+        )
+        self.model.to(self.device)  # Move model to correct device
         self.model.eval()
 
     def find_key_points_logo(self, frame):
@@ -35,7 +40,9 @@ class DL:
         image = self.img1.mean(-1) / 255
         image = np.pad(image, [(0, int(np.ceil(s / 8)) * 8 - s) for s in image.shape[:2]])
         with torch.no_grad():
-            pred_th = self.model({'image': torch.from_numpy(image[None, None]).float()})
+            #pred_th = self.model({'image': torch.from_numpy(image[None, None]).float()})
+            image_tensor = torch.from_numpy(image[None, None]).float().to(self.device)
+            pred_th = self.model({'image': image_tensor})
 
 
         # points_th = pred_th['keypoints'][0]
@@ -44,8 +51,10 @@ class DL:
         #plt.scatter(*points_th.T, lw=0, s=4, c='lime')
         #plt.show()
 
-        self.keypoints_left = pred_th['keypoints'][0].numpy()
-        self.descriptors_left = pred_th['descriptors'][0].numpy()
+        self.keypoints_left = pred_th['keypoints'][0].cpu().numpy()
+        self.descriptors_left = pred_th['descriptors'][0].cpu().numpy()
+        #self.keypoints_left = pred_th['keypoints'][0].numpy()
+        #self.descriptors_left = pred_th['descriptors'][0].numpy()
 
         # self.keypoints_left, self.descriptors_left = self.sift.detectAndCompute(gray, None)
 
@@ -56,11 +65,16 @@ class DL:
 
         image = self.img2.mean(-1) / 255
         image = np.pad(image, [(0, int(np.ceil(s / 8)) * 8 - s) for s in image.shape[:2]])
-        with torch.no_grad():
-            pred_th = self.model({'image': torch.from_numpy(image[None, None]).float()})
 
-        self.keypoints_right = pred_th['keypoints'][0].numpy()
-        self.descriptors_right = pred_th['descriptors'][0].numpy()
+        image_tensor = torch.from_numpy(image[None, None]).float().to(self.device)  # <-- FIXED
+        with torch.no_grad():
+            #pred_th = self.model({'image': torch.from_numpy(image[None, None]).float()})
+            pred_th = self.model({'image': image_tensor})
+
+        #self.keypoints_right = pred_th['keypoints'][0].numpy()
+        #self.descriptors_right = pred_th['descriptors'][0].numpy()
+        self.keypoints_right = pred_th['keypoints'][0].cpu().numpy()
+        self.descriptors_right = pred_th['descriptors'][0].cpu().numpy()
 
     def find_matches(self, frame):
         self.find_key_points_frame(frame)
@@ -83,6 +97,15 @@ class DL:
 
         cv2.imwrite("results/SuperPoint_result.png", img_matches)
         
+        num_logo_descriptors = self.descriptors_left.shape[0]
+        num_frame_descriptors = self.descriptors_right.shape[0]
+        descriptor_size = self.descriptors_left.shape[1]  # dimensionality of descriptor, e.g., 256
+        logo_memory = self.descriptors_left.nbytes
+        frame_memory = self.descriptors_right.nbytes
+        num_matches = len(good_matches)
+
+        matching_score = num_matches / num_logo_descriptors if num_logo_descriptors > 0 else 0.0
+
         print('\nSuperPoint Matching Results')
         print('*******************************')
         # Print the number of keypoints detected in the training image
@@ -91,6 +114,13 @@ class DL:
         print("Number of Keypoints Detected In The Overall Image: ", len(keypoints2_cv))
         # Print total number of matching points between the training and query images
         print("\nNumber of Matching Keypoints Between The Sample and Overall Images: ", len(good_matches))
+        print("Overall Images: 1")  # For now, assume 1 image/frame is processed at a time
+        print(f"Number of descriptors (logo): {num_logo_descriptors}")
+        print(f"Number of descriptors (frame): {num_frame_descriptors}")
+        print(f"Memory (logo descriptors): {logo_memory} bytes")
+        print(f"Memory (frame descriptors): {frame_memory} bytes")
+        print("--- ROBUSTNESS METRIC ---")
+        print(f"Matching Score: {matching_score:.4f} ({num_matches} matches / {num_logo_descriptors} keypoints)")
 
         # -- Localize the object
         obj = np.empty((len(good_matches), 2), dtype=np.float32)

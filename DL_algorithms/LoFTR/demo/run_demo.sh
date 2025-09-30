@@ -9,7 +9,7 @@ if [ ! -f utils.py ]; then
 fi
 
 # Use webcam 0 as input source. 
-input='/home/bsdionisio/Documents/Object-detection-through-ML-and-DL-methods/data'
+input='/home/buybluepants/Documents/Object-detection-through-ML-and-DL-methods/data'
 # or use a pre-recorded video given the path.
 # input=/home/sunjiaming/Downloads/scannet_test/$scene_name.mp4
 

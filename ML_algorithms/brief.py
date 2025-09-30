@@ -53,6 +53,15 @@ class Brief:
 
         result = cv2.drawMatches(self.img1, self.keypoints_left, self.img2, self.keypoints_right, matches, self.img2, flags = 2)
 
+        num_logo_kp = len(self.keypoints_left)
+        num_frame_kp = len(self.keypoints_right)
+        num_matches = len(matches)
+
+        # Simple robustness metric
+        matching_score = num_matches / min(num_logo_kp, num_frame_kp)
+        print("\n--- ROBUSTNESS METRIC ---")
+        print(f"Matching Score: {matching_score:.4f} ({num_matches} matches / {min(num_logo_kp, num_frame_kp)} keypoints)")
+
         # Print the number of keypoints detected in the sample image
         print("Number of Keypoints Detected In The Sample Image: ", len(self.keypoints_left))
 
@@ -71,5 +80,3 @@ class Brief:
 
         cv2.imwrite("brief_result.png", result)
         cv2.imshow('result', result)
-        cv2.waitKey()
-        cv2.destroyAllWindows()

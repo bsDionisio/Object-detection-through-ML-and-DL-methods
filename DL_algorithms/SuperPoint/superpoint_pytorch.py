@@ -159,6 +159,7 @@ class SuperPoint(nn.Module):
             scores.append(s)
             descriptors.append(d.squeeze(0).transpose(0, 1))
 
+
         return {
             "keypoints": keypoints,
             "keypoint_scores": scores,

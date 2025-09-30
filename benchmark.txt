@@ -1,0 +1,52 @@
+brief:
+--- ROBUSTNESS METRIC ---
+Matching Score: 0.8421 (16 matches / 19 keypoints)
+Number of Keypoints Detected In The Sample Image:  19
+Number of Keypoints Detected In The Overall Image:  6966
+
+Number of Matching Keypoints Between The Sample and Overall Images:  16
+Number of descriptors (logo): 19
+Number of descriptors (frame): 6966
+Memory (logo descriptors): 608 bytes
+Memory (frame descriptors): 222912 bytes
+Execution time: 0.1976 seconds
+
+orb:
+=== Robustness Metric ===
+Robustness Score: 1.0
+Number of Keypoints Detected In The Sample Image:  9
+Number of Keypoints Detected In The Overall Image:  3000
+
+Number of Matching Keypoints Between The Sample and Overall Images:  9
+Number of descriptors (logo): 9
+Number of descriptors (frame): 3000
+Memory (logo descriptors): 288 bytes
+Memory (frame descriptors): 96000 bytes
+Execution time: 0.3406 seconds
+
+sift:
+Robustness Metric (good matches / logo keypoints): 0.6818
+Number of Keypoints Detected In The Sample Image:  22
+Number of Keypoints Detected In The Overall Image:  3951
+
+Number of Matching Keypoints Between The Sample and Overall Images:  15
+Number of descriptors (logo): 22
+Number of descriptors (frame): 3951
+Memory (logo descriptors): 11264 bytes
+Memory (frame descriptors): 2022912 bytes
+Execution time: 0.3912 seconds
+
+akaze:
+A-KAZE Matching Results
+*******************************
+Number of Keypoints Detected In The Sample Image:  2
+Number of Keypoints Detected In The Overall Image:  3115
+
+Number of Matching Keypoints Between The Sample and Overall Images:  1
+Number of descriptors (logo): 2
+Number of descriptors (frame): 3115
+Memory (logo descriptors): 122 bytes
+Memory (frame descriptors): 190015 bytes
+
+Robustness Metric (Match Ratio): 0.50
+Execution time: 0.2979 seconds

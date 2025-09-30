@@ -59,6 +59,11 @@ class Akaze:
         print("Memory (logo descriptors):", self.descriptors_left.nbytes, "bytes")
         print("Memory (frame descriptors):", self.descriptors_right.nbytes, "bytes")
 
+        min_keypoints = min(len(self.keypoints_left), len(self.keypoints_right))
+        if min_keypoints > 0:
+            match_ratio = len(good) / min_keypoints
+        else:
+            match_ratio = 0.0
+        print("\n Robustness Metric (Match Ratio): {:.2f}".format(match_ratio))
+
         cv2.imshow('Akaze', result)
-        cv2.waitKey()
-        cv2.destroyAllWindows()

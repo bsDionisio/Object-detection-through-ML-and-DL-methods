@@ -205,7 +205,7 @@ def extract(dataset, save_path):
     pbar = tqdm(dataloader)
     for bitmaps, images in pbar:
         #Moves image tensors to GPU (DEV)
-        bitmaps = bitmaps.to(CPU, non_blocking=True)
+        bitmaps = bitmaps.to(DEV, non_blocking=True)
 
         #Calls the model in inference mode
         with torch.no_grad():
@@ -235,7 +235,7 @@ def extract(dataset, save_path):
             kps_img_space, mask = image.to_image_coord(kps_crop_space)
 
             #Applies mask -> keep only valid points
-            keypoints   = kps_img_space.numpy().T[mask]
+            keypoints = kps_img_space.numpy().T[mask]
             descriptors = features.desc.numpy()[mask]
             scores      = features.kp_logp.numpy()[mask]
 
@@ -322,8 +322,12 @@ if __name__ == '__main__':
         help="Directory with images to be processed."
     )
     args = parser.parse_args()
-    #DEV   = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    mode = 'GPU'
     CPU   = torch.device('cpu')
+    if mode == 'CPU':
+        DEV = CPU
+    else:
+        DEV   = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     dataset = SceneDataset(args.image_path, crop_size=(args.height, args.width))
     
     state_dict = torch.load(args.model_path, map_location='cpu')
@@ -337,6 +341,6 @@ if __name__ == '__main__':
         raise KeyError('Incompatible weight file!')
     model = DISK(window=8, desc_dim=args.desc_dim)
     model.load_state_dict(weights)
-    model = model.to(CPU)
+    model = model.to(DEV)
     
     described_samples = extract(dataset, args.h5_path)

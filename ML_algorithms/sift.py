@@ -33,12 +33,28 @@ class Sift:
         # Create a Brute Force Matcher object.
         bf = cv2.BFMatcher(cv2.NORM_L1, crossCheck = False)
 
-        # Perform the matching between the SIFT descriptors of the training image and the test image
-        matches = bf.match(self.descriptors_left, self.descriptors_right)
+        # Apply knn matching to get k=2 best matches for each descriptor
+        knn_matches = bf.knnMatch(self.descriptors_left, self.descriptors_right, k=2)
+
+        # Apply Lowe's ratio test
+        ratio_thresh = 0.75
+        good_matches = []
+        for m, n in knn_matches:
+            if m.distance < ratio_thresh * n.distance:
+                good_matches.append(m)
+
+        # Sort good matches by distance
+        good_matches = sorted(good_matches, key=lambda x: x.distance)
 
         # The matches with shorter distance are the ones we want.
-        matches = sorted(matches, key = lambda x : x.distance)
-        result = cv2.drawMatches(self.img1, self.keypoints_left, self.img2, self.keypoints_right, matches, self.img2, flags = 2)
+        result = cv2.drawMatches(self.img1, self.keypoints_left, self.img2, self.keypoints_right, good_matches, self.img2, flags = 2)
+
+        # Robustness Metric
+        if len(self.keypoints_left) > 0:
+            robustness = len(good_matches) / len(self.keypoints_left)
+            print(f"Robustness Metric (good matches / logo keypoints): {robustness:.4f}")
+        else:
+            print("Robustness Metric: Undefined (no keypoints in logo)")
 
         # Print the number of keypoints detected in the sample image
         print("Number of Keypoints Detected In The Sample Image: ", len(self.keypoints_left))
@@ -47,7 +63,7 @@ class Sift:
         print("Number of Keypoints Detected In The Overall Image: ", len(self.keypoints_right))
 
         # Print total number of matching points between the sample and overall images
-        print("\nNumber of Matching Keypoints Between The Sample and Overall Images: ", len(matches))
+        print("\nNumber of Matching Keypoints Between The Sample and Overall Images: ", len(good_matches))
 
         # Number of descriptors
         print("Number of descriptors (logo):", self.descriptors_left.shape[0])
@@ -59,5 +75,3 @@ class Sift:
         # Display the best matching points
         cv2.imwrite("sift_result.png", result)
         cv2.imshow('SIFT', result)
-        cv2.waitKey()
-        cv2.destroyAllWindows()
