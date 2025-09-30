@@ -34,6 +34,14 @@ class Orb:
         matches = self.matcher.match(self.descriptors_left, self.descriptors_right)
 
         good_matches = sorted(matches, key=lambda x: x.distance)
+
+        # --- Compute Robustness Metric ---
+        num_good_matches = len(good_matches)
+        min_keypoints = min(len(self.keypoints_left), len(self.keypoints_right))
+        robustness_score = num_good_matches / min_keypoints if min_keypoints > 0 else 0
+
+        print("\n=== Robustness Metric ===")
+        print("Robustness Score:", round(robustness_score, 4))
         
         # -- Draw matches
         img_matches = np.empty(
